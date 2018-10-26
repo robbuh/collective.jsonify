@@ -1,4 +1,5 @@
 from Acquisition import aq_base
+from Acquisition import aq_parent
 from DateTime import DateTime
 from Products.CMFCore.utils import getToolByName
 import datetime
@@ -465,7 +466,15 @@ class Wrapper(dict):
             {'_type': 'Document'}
         """
         try:
-            self['_type'] = self.context.portal_type
+            _type = self.context.portal_type
+
+            # Convert FileAttachment and ImageAttachment to File & Image
+            if _type == 'FileAttachment':
+                _type = 'File'
+            elif _type == 'ImageAttachment':
+                _type = 'Image'
+
+            self['_type'] = _type
         except AttributeError:
             pass
 
@@ -476,7 +485,16 @@ class Wrapper(dict):
         Example::
            {'_classname': 'ATDocument'}
         """
-        self['_classname'] = self.context.__class__.__name__
+
+        _classname = self.context.__class__.__name__
+
+        # Convert FileAttachment and ImageAttachment to File & Image
+        if _classname == 'FileAttachment':
+            _classname = 'File'
+        elif _classname == 'ImageAttachment':
+            _classname = 'Image'
+
+        self['_classname'] = _classname
 
     def get_properties(self):
         """Object properties
@@ -524,13 +542,22 @@ class Wrapper(dict):
         _default = ''
         try:
             _default = '/'.join(
-                self.portal_utils.browserDefault(self.context)[1])
+                self.portal_utils.browserDefault(self.context)[1])            
         except AttributeError:
             pass
 
         _layout = ''
         try:
             _layout = self.context.getLayout()
+        except:
+            pass
+
+        _is_defaultpage = ''
+        try: 
+            container = aq_parent(self.context)
+            plone_utils = getToolByName(self.context, 'plone_utils')
+            browser_default = plone_utils.browserDefault(container)
+            _is_defaultpage = self.context.getId() == browser_default[1][0]
         except:
             pass
 
@@ -541,6 +568,7 @@ class Wrapper(dict):
 
         self['_defaultpage'] = _default
         self['_layout'] = _layout
+        self['_is_defaultpage'] = _is_defaultpage
 
     def get_format(self):
         """Format of object
