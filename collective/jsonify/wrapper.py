@@ -296,9 +296,7 @@ class Wrapper(dict):
                         pass
 
             elif type_ in ['DateTimeField', ]:
-                value = str(self._get_at_field_value(field))
-                # Set empty field to None/Null instead of 'None'
-                value = value!='None' and value or None
+                value = self._get_at_field_value(field)
                 self[unicode(fieldname)] = value
 
             elif type_ in [
