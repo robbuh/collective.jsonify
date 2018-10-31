@@ -38,6 +38,11 @@ class Wrapper(dict):
         if not self.charset:
             self.charset = 'utf-8'
 
+        # if lang is None
+        lang = self.context.getLanguage()
+        if not lang:
+            self.context.setLanguage(self.get_item_language())
+
         for method in dir(self):
             if method.startswith('get_'):
                 getattr(self, method)()
@@ -93,6 +98,33 @@ class Wrapper(dict):
             'encoding': 'base64'
         }
         return dvalue
+
+    def get_item_language(self):
+        """ Get item language if lang key is None
+        """
+        portal_languages = self.context.portal_languages
+        langs = portal_languages.getAvailableLanguages()
+        langs = [k for k, v in langs.items()]
+        preferred = portal_languages.getPreferredLanguage()
+
+        lang = self.context.getLanguage()
+
+        # Set lang if in item path
+        if not lang:
+            try:
+                portal_path = self.portal_path.split('/')
+                partal_path_len = int(len(portal_path))
+                lang_folder = self.context.getPhysicalPath()[:partal_path_len+1][-1]
+                lang = [k for k in langs if k == lang_folder][0]
+            except:
+                pass
+
+        # Set default site lang if lang is found in item path
+        if not lang:
+           lang = preferred
+
+        return lang
+
 
     def get_dexterity_fields(self):
         """If dexterity is used then extract fields.
@@ -675,7 +707,7 @@ class Wrapper(dict):
             pass
 
         self['_gopip'] = pos
-
+        
     def get_translation(self):
         """ Get LinguaPlone translation linking information.
         """
