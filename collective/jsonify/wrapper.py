@@ -20,13 +20,14 @@ class Wrapper(dict):
         self.context = context
         self._context = aq_base(context)
         self.charset = None
+        self.lang = self.context.Language()
         try:
             from Products.CMFCore.utils import getToolByName
             self.portal = getToolByName(
                 self.context, 'portal_url').getPortalObject()
             self.portal_path = '/'.join(self.portal.getPhysicalPath())
-            self.portal_utils = getToolByName(
-                self.context, 'plone_utils', None)
+            self.portal_utils = getToolByName(self.context, 'plone_utils', None)
+            self.portal_languages = getToolByName(self.context, 'portal_languages', None)
             try:
                 self.charset = self.portal.portal_properties.site_properties.default_charset  # noqa
             except AttributeError:
@@ -38,9 +39,8 @@ class Wrapper(dict):
         if not self.charset:
             self.charset = 'utf-8'
 
-        # if lang is None
-        lang = self.context.getLanguage()
-        if not lang:
+        # Set language if object has language = None
+        if not self.lang:
             self.context.setLanguage(self.get_item_language())
 
         for method in dir(self):
@@ -100,30 +100,29 @@ class Wrapper(dict):
         return dvalue
 
     def get_item_language(self):
-        """ Get item language if lang key is None
+        """ Get item language if languange is None
         """
-        portal_languages = self.context.portal_languages
-        langs = portal_languages.getAvailableLanguages()
-        langs = [k for k, v in langs.items()]
-        preferred = portal_languages.getPreferredLanguage()
 
-        lang = self.context.getLanguage()
+        if not self.lang:
 
-        # Set lang if in item path
-        if not lang:
+            # Get available languages
+            portal_languages = self.portal_languages
+            langs = portal_languages.getAvailableLanguages()
+            langs = [k for k, v in langs.items()]
+
             try:
+                # Set language if it's found on url
                 portal_path = self.portal_path.split('/')
-                partal_path_len = int(len(portal_path))
-                lang_folder = self.context.getPhysicalPath()[:partal_path_len+1][-1]
-                lang = [k for k in langs if k == lang_folder][0]
+                lang_index = int(len(portal_path))
+                lang_folder = self.context.getPhysicalPath()[lang_index]
+                lang = [l for l in langs if l == lang_folder]
+                lang = lang[0]
             except:
-                pass
+                # Set preferred language
+                preferred = portal_languages.getPreferredLanguage()
+                lang = preferred
 
-        # Set default site lang if lang is found in item path
-        if not lang:
-           lang = preferred
-
-        return lang
+            return lang
 
 
     def get_dexterity_fields(self):
@@ -572,7 +571,7 @@ class Wrapper(dict):
         _default = ''
         try:
             _default = '/'.join(
-                self.portal_utils.browserDefault(self.context)[1])            
+                self.portal_utils.browserDefault(self.context)[1])
         except AttributeError:
             pass
 
@@ -583,7 +582,7 @@ class Wrapper(dict):
             pass
 
         _is_defaultpage = ''
-        try: 
+        try:
             container = aq_parent(self.context)
             plone_utils = getToolByName(self.context, 'plone_utils')
             browser_default = plone_utils.browserDefault(container)
@@ -707,7 +706,7 @@ class Wrapper(dict):
             pass
 
         self['_gopip'] = pos
-        
+
     def get_translation(self):
         """ Get LinguaPlone translation linking information.
         """
