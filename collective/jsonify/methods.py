@@ -38,7 +38,7 @@ def get_item(self):
     passed = False
     while not passed:
         try:
-            JSON = json.dumps(context_dict)
+            JSON = json.dumps(context_dict, default=str)
             passed = True
         except Exception, error:
             if "serializable" in str(error):
